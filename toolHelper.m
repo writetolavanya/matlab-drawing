@@ -173,10 +173,24 @@ function indices = parseFaceCondition(nwk, condition)
                 indices = 1:(value-1);
             end
 
-        elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2'}))
+        elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2', 'ls'}))
 
              if strcmp(condition(1), 'd')
                 searchCol = nwk.dia;
+             
+             elseif strcmp(condition(1:2), 'ls')
+                 KFfile = 'KF_WM_TV_straight_LCC_V2.faceDistance';
+
+                 if isfield(nwk, 'faceDistance')
+                     searchCol = nwk.faceDistance;
+                 elseif ~isfield(nwk, 'faceDistance') && exist(KFfile, 'file') == 2
+                     nwk.faceDistance = load(KFfile);
+                     searchCol = nwk.faceDistance;
+                 else
+                     disp('KF_WM_TV_straight_LCC_V2.faceDistance file not found');
+                     return;
+                 end
+
              elseif strcmp(condition(1), 'l')
                 if ~isfield(nwk, 'faceLen')
                     nwk.faceLen = calculateLengths(nwk);

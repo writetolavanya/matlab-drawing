@@ -897,7 +897,7 @@ function drawingTool()
 
     function loadToViewCb(~, ~)
 
-         [file, path] = uigetfile('*.bmp;*.fMx;*.stl;*.tif', 'Select a file to load');
+         [file, path] = uigetfile('*.bmp;*.fMx;*.stl;*.tif;*.nwkx', 'Select a file to load');
          if isequal(file, 0) || isequal(path, 0)
               disp('File selection canceled');
               return
@@ -910,12 +910,16 @@ function drawingTool()
          if strcmp(ext, '.bmp')
                [drawHandle, viewHandle] = loadBmp(path, file);
                file = [file, '(z=', num2str(currentThirdCoord), ')'];
-         elseif strcmp(ext, '.fMx')
+         elseif strcmp(ext, '.fMx') || strcmp(ext, '.nwkx')
                [drawHandle, viewHandle] = loadNwkToView(path, file);
          elseif strcmp(ext, '.stl')
                [drawHandle, viewHandle] = loadStl(path, file);
          elseif strcmp(ext, '.tif')
                [drawHandle, viewHandle] = loadTiff(path, file);
+         end
+
+         if strcmp(ext, '.nwkx')
+             ext = '.fMx';
          end
          
          rendererTable = [rendererTable; {fullfile(path, file), ext, {drawHandle}, {viewHandle}}];
@@ -928,7 +932,7 @@ function drawingTool()
 
         filename = fullfile(path, file);
         [~, name, ext] = fileparts(filename);
-        if strcmp(ext, '.fMx')
+        if strcmp(ext, '.fMx') || strcmp(ext, '.nwkx')
             filename = fullfile(path, name);
         end
         nwk = nwkHelp.load(filename);
@@ -1185,7 +1189,7 @@ function drawingTool()
             end
             rendererTable(selection, :) = [];
             rendererTable(any(ismissing(rendererTable), 2), :) = [];
-            objNwk = []; 
+            objNwk = []; objGraph = [];
             % should we clear objGraph too, for shortest path?
         end
 
