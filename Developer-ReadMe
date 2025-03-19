@@ -1,0 +1,17 @@
+Tracing of Whole Mouse
+
+objNwk - will be the loaded network
+objSubNwk - will be the network after filtering based on conditions
+objGraph - matlab graph version of same objSubNwk - used in shortest path
+
+objSubNwk and objGraph needs to be updated together always
+
+objSubNwk needs to be updated when?
+  - after loaading reference
+  - when filter conditions change
+
+objSubNwk used in?
+ - expansion of path, children
+ - getting avg diameters for new connections
+
+During clearObj - clear the objNwk, objSubNwk, objGraph
