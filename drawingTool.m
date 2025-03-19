@@ -935,38 +935,31 @@ function drawingTool()
         if strcmp(ext, '.fMx') || strcmp(ext, '.nwkx')
             filename = fullfile(path, name);
         end
-        nwk = nwkHelp.load(filename);
-       % snwk = nwkSplineHelp.makeSplinedNwk(nwk);
+        objNwk = nwkHelp.load(filename);
 
         % filter nwk based on diameter, create nwk.ptIdx, nwk.faceIdx
         if (isempty(faceEditBox.String))
-            faceSelection = (1:nwk.nf)'; % show back the whole graph
+            faceSelection = (1:objNwk.nf)'; % show back the whole graph
         else
-            faceSelection = toolHelper.faceEditCb(faceEditBox.String, nwk);
+            faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
         end
+            
+        updateRefMesh(objNwk, faceSelection); % creates ObjSubNetwork and ObjGraph
 
-        objNwk = toolHelper.makeSubNwkInd(nwk, faceSelection);
-        objSubNwk = objNwk;
-
-        GTmp = graph();
-        GTmp = addnode(GTmp, objSubNwk.np);
-        GTmp.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
-        GTmp = addedge(GTmp, objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3));
-          
         hold(axDraw, 'on');
-        drawHandle = plot(axDraw, GTmp, 'XData', GTmp.Nodes.X, 'YData', GTmp.Nodes.Y,...
-            'ZData', GTmp.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
+        drawHandle = plot(axDraw, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
+            'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
             'NodeLabel', {}, 'EdgeLabel', {}, 'ShowArrows', 'off'); 
         set(drawHandle, 'HitTest', 'off');
         hold(axDraw, 'off');
 
         hold(axView, 'on');
-        viewHandle = plot(axView, GTmp, 'XData', GTmp.Nodes.X, 'YData', GTmp.Nodes.Y,...
-            'ZData', GTmp.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
+        viewHandle = plot(axView, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
+            'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
             'NodeLabel', {}, 'EdgeLabel', {}, 'ShowArrows', 'off'); 
         hold(axView, 'off');
 
-        expandAxesLimits(nwk.ptCoordMx);
+        expandAxesLimits(objSubNwk.ptCoordMx);
     end
 
     function [hImage2D, hImage3D] = loadBmp(path, file)
@@ -1189,7 +1182,8 @@ function drawingTool()
             end
             rendererTable(selection, :) = [];
             rendererTable(any(ismissing(rendererTable), 2), :) = [];
-            objNwk = []; objGraph = [];
+            
+            objNwk = []; objGraph = []; objSubNwk = [];
             % should we clear objGraph too, for shortest path?
         end
 
@@ -1539,7 +1533,7 @@ function drawingTool()
                         objP1 = find(objGraph.Nodes.X == G.Nodes.X(ptIdx1) & objGraph.Nodes.Y == G.Nodes.Y(ptIdx1) & objGraph.Nodes.Z == G.Nodes.Z(ptIdx1));
                         objP2 = find(objGraph.Nodes.X == G.Nodes.X(ptIdx2) & objGraph.Nodes.Y == G.Nodes.Y(ptIdx2) & objGraph.Nodes.Z == G.Nodes.Z(ptIdx2));
                         
-                        objFaceInd = findedge(objGraph, objP1, objP2);
+                        objFaceInd = findedge(objGraph, objP1, objP2); objFaceInd = objFaceInd(1); % for duplicate edges(1)
                         origFaceIdx = objGraph.Edges.FaceIdx(objFaceInd);
 
                         subNwkIdx = find(objSubNwk.fIdx == origFaceIdx);
@@ -1602,41 +1596,46 @@ function drawingTool()
     function shortestPathCb(~, ~)
 
           if (isempty(objSubNwk))
-              stlRows = find(strcmp(rendererTable.type, '.stl'));
-              if isempty(stlRows)
-                    % If no stl file, read from fMx  
-                    fMxRows = find(strcmp(rendererTable.type, '.fMx'));
-                    if isempty(fMxRows)
-                        showTextOnFig('Please add an stl or fMx file to use as surface backdrop and try again...');
-                        shortestPathBtn.Value = 0;
-                        return;
-                    else
-                        % Use the first available .fMx file
-                        filename = char(rendererTable.fileName(fMxRows(1)));
-                        [path, name, ~] = fileparts(filename);
-                        objSubNwk = nwkHelp.load(fullfile(path, name));
-                    end
-              else
-                    filename = char(rendererTable.fileName(stlRows(1)));
-                    objSubNwk = nwkConverter.stl2faceMx2(filename); % change this is use condition output (?)
-              end
-          end 
+
+            if (isempty(faceEditBox.String))
+                faceSelection = (1:objNwk.nf)'; % show back the whole graph
+            else
+                faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
+            end
+            updateRefMesh(objNwk, faceSelection);
+          end
+
+              % stlRows = find(strcmp(rendererTable.type, '.stl'));
+              % if isempty(stlRows)
+              %       % If no stl file, read from fMx  
+              %       fMxRows = find(strcmp(rendererTable.type, '.fMx'));
+              %       if isempty(fMxRows)
+              %           showTextOnFig('Please add an stl or fMx file to use as surface backdrop and try again...');
+              %           shortestPathBtn.Value = 0;
+              %           return;
+              %       else
+              %           % Use the first available .fMx file
+              %           filename = char(rendererTable.fileName(fMxRows(1)));
+              %           [path, name, ~] = fileparts(filename);
+              %           objSubNwk = nwkHelp.load(fullfile(path, name));
+              %       end
+              % else
+              %       filename = char(rendererTable.fileName(stlRows(1)));
+              %       objSubNwk = nwkConverter.stl2faceMx2(filename); % change this is use condition output (?)
+              % end
 
           % add a check to be only in autoconnect and connect modes?
           if shortestPathBtn.Value    
      
              if isempty(objGraph)
-                 objGraph = graph(objSubNwk.faceMx(:, 2), objSubNwk.faceMx(:, 3));
-                 objGraph.Nodes.X = objSubNwk.ptCoordMx(:, 1);
-                 objGraph.Nodes.Y = objSubNwk.ptCoordMx(:, 2);
-                 objGraph.Nodes.Z = objSubNwk.ptCoordMx(:, 3);
 
-                 objGraph.Nodes.PtIdx = objSubNwk.pIdx;
-                 objGraph.Edges.FaceIdx = objSubNwk.fIdx;
-                
-                 % Store the resistance as edge weights in graph
-                 alpha = nwkSim.ResistanceVector(objSubNwk.ptCoordMx, objSubNwk.faceMx, objSubNwk.dia, objSubNwk.nf);
-                 objGraph.Edges.Weight = alpha;
+                if (isempty(faceEditBox.String))
+                    faceSelection = (1:objNwk.nf)'; % show back the whole graph
+                else
+                    faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
+                end
+           
+                updateRefMesh(objNwk, faceSelection) % creates ObjSubNetwork and ObjGraph
              end
 
              snapToSurfaceBtn.Value = 1;
@@ -1644,7 +1643,6 @@ function drawingTool()
          else
              showTextOnFig('Shortest path mode deactivated.');
              set(axDraw, 'ButtonDownFcn', @addPoint);
-             objGraph = [];
              snapToSurfaceBtn.Value = 0;
          end
          
@@ -1705,12 +1703,12 @@ function drawingTool()
 
                 faceInd = findedge(objGraph, path(i-1), path(i));
                 origfaceInd = objGraph.Edges.FaceIdx(faceInd);
-                subnwkFaceIdx = find(objSubNwk.fIdx ==  origfaceInd);
+                subnwkFaceIdx = find(objSubNwk.fIdx ==  origfaceInd(1));
                 origfaceDia = objSubNwk.dia(subnwkFaceIdx);
                 
                 G = addedge(G, pathIdx(i-1), pathIdx(i), origfaceDia);
                 GFaceIdx = findedge(G, pathIdx(i-1), pathIdx(i));
-                G.Edges.FaceIdx(GFaceIdx) = origfaceInd;
+                G.Edges.FaceIdx(GFaceIdx) = origfaceInd(1);
 
                 edgeIdx(i-1) = GFaceIdx;
             else
@@ -1908,20 +1906,28 @@ function drawingTool()
 
     function [newCoords, originalIdx] = getNearestPtOnSurface(oldCoords)
            if isempty(objSubNwk)
+
+                if (isempty(faceEditBox.String))
+                    faceSelection = (1:objNwk.nf)'; % show back the whole graph
+                else
+                    faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
+                end
+                updateRefMesh(objNwk, faceSelection);
+
                % In the viewToload objects take the latest for now?
 
-               % NOTE: We check if there is a stl, and then check if there is a nwk file.
-               objRows = find(strcmp(rendererTable.type, '.stl'));
-               if (isempty(objRows))
-                   objRows = find(strcmp(rendererTable.type, '.fMx'));
-                   filename = char(rendererTable.fileName(objRows(1)));
-                   [path, name, ~] = fileparts(filename);
-                   objSubNwk = nwkHelp.load(fullfile(path, name));
-               else
-                   filename = rendererTable.fileName(objRows(1));
-                   disp(filename);
-                   objSubNwk = nwkConverter.stl2faceMx2(filename);
-               end
+               % % NOTE: We check if there is a stl, and then check if there is a nwk file.
+               % objRows = find(strcmp(rendererTable.type, '.stl'));
+               % if (isempty(objRows))
+               %     objRows = find(strcmp(rendererTable.type, '.fMx'));
+               %     filename = char(rendererTable.fileName(objRows(1)));
+               %     [path, name, ~] = fileparts(filename);
+               %     objSubNwk = nwkHelp.load(fullfile(path, name));
+               % else
+               %     filename = rendererTable.fileName(objRows(1));
+               %     disp(filename);
+               %     objSubNwk = nwkConverter.stl2faceMx2(filename);
+               % end
            end
 
            xRange = xlim(axDraw); yRange = ylim(axDraw); zRange = zlim(axDraw);
@@ -2104,18 +2110,8 @@ function drawingTool()
         end
 
         if (~isempty(faceSelection)) % no need to make subnwk,graph,plot if selection is empty
-            objSubNwk = toolHelper.makeSubNwkInd(objNwk, faceSelection);
 
-            objGraph = graph();
-            objGraph = addnode(objGraph, objSubNwk.np);
-            objGraph.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
-            
-            objGraph = addedge(objGraph, objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3));
-            objGraph.Nodes.PtIdx = objSubNwk.pIdx;
-            objGraph.Edges.FaceIdx = objSubNwk.fIdx;
-
-            alpha = nwkSim.ResistanceVector(objSubNwk.ptCoordMx, objSubNwk.faceMx, objSubNwk.dia, objSubNwk.nf);
-            objGraph.Edges.Weight = alpha;
+            updateRefMesh(objNwk, faceSelection); 
 
             hold(axDraw, 'on');
             drawHandle = plot(axDraw, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
@@ -2271,21 +2267,16 @@ function drawingTool()
 
         else
 
-            GTmp = graph();
-            GTmp = addnode(GTmp, objSubNwk.np);
-            GTmp.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
-            GTmp = addedge(GTmp, objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3));
-    
             hold(axDraw, 'on');
-            drawHandle = plot(axDraw, GTmp, 'XData', GTmp.Nodes.X, 'YData', GTmp.Nodes.Y,...
-                'ZData', GTmp.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
+            drawHandle = plot(axDraw, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
+                'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
                 'NodeLabel', {}, 'EdgeLabel', {}, 'ShowArrows', 'off'); 
             set(drawHandle, 'HitTest', 'off');
             hold(axDraw, 'off');
     
             hold(axView, 'on');
-            viewHandle = plot(axView, GTmp, 'XData', GTmp.Nodes.X, 'YData', GTmp.Nodes.Y,...
-                'ZData', GTmp.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
+            viewHandle = plot(axView, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
+                'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
                 'NodeLabel', {}, 'EdgeLabel', {}, 'ShowArrows', 'off'); 
             hold(axView, 'off');
     
@@ -2336,5 +2327,22 @@ function drawingTool()
                 end
         end
     end
-    
+
+    function updateRefMesh(objNwk, faceSelection)
+        objSubNwk = toolHelper.makeSubNwkInd(objNwk, faceSelection);
+
+        % Compute the resistance as edge weights in graph
+        alpha = nwkSim.ResistanceVector(objSubNwk.ptCoordMx, objSubNwk.faceMx, objSubNwk.dia, objSubNwk.nf);
+        objGraph = graph(table([objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3)], alpha, objSubNwk.fIdx, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'}));
+
+        % add isolated nodes count
+        if objSubNwk.np > size(objGraph.Nodes, 1)
+            diff = (objSubNwk.np - size(objGraph.Nodes, 1));
+            objGraph = addnode(objGraph, diff);
+        end
+
+        objGraph.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
+        % Points are not scrambled
+        objGraph.Nodes.PtIdx = objSubNwk.pIdx;
+    end
 end
