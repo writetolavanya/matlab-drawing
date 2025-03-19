@@ -845,12 +845,35 @@ function drawingTool()
             elseif overlap > 0 
                 choice = questdlg(sprintf('There is %.2f%% overlap. Do you want to proceed with loading the network?', overlap), ...
                                   'Overlap Detected', ...
-                                  'Yes', 'No', 'No');
+                                  'Yes', 'No', 'Merge Duplicates', 'No');
                 if strcmp(choice, 'No')
                     fclose(fileId);
                     showTextOnFig("Loading nwk cancelled due to overlap.");
                     return;
                 end
+
+                if strcmp(choice, 'Merge Duplicates')
+                    oldPts = [G.Nodes.X, G.Nodes.Y, G.Nodes.Z];
+                    newPts = [nwk.ptCoordMx];
+                    allPts = [oldPts ; newPts];
+
+                    [~, ~, duplicateIdx] = unique(allPts, 'rows', 'stable');
+                    duplicatesAt = find(duplicateIdx < (size(oldPts,1)+1));
+                    duplicatesAt = duplicatesAt((size(oldPts,1)+1):end) - size(oldPts,1);
+
+                    % Identify duplicate rows and remove them from
+                    % nwk.faceMx, nwk.nf, nwk.dia
+                    duplicateFaceRows = find(all(ismember(nwk.faceMx(:, 2:3), duplicatesAt), 2));
+                    oldP1 = duplicateIdx(nwk.faceMx(duplicateFaceRows, 2) + size(oldPts,1));
+                    oldP2 = duplicateIdx(nwk.faceMx(duplicateFaceRows, 3) + size(oldPts,1));
+                    edgeIdx = findedge(G, oldP1, oldP2); validEdges = edgeIdx > 0;
+
+                    nwk.faceMx(duplicateFaceRows(validEdges), :) = [];
+                    nwk.dia(duplicateFaceRows(validEdges)) = [];
+                    nwk.nf = size(nwk.faceMx, 1);
+
+                    
+                end    
             end
         end
 
@@ -859,15 +882,13 @@ function drawingTool()
             nwk.faceMx(:,3) = nwk.faceMx(:,3) + np;
         end
 
-        fsize = size(G.Edges, 1); 
-
         G = addnode(G, nwk.np);
 
         origPIdFilename = [fullfile(path,name), '.originalPIdx'];
         if exist(origPIdFilename, 'file') == 2
             Pid = load(origPIdFilename);
         else
-            Pid = ((np+1) : (np + nwk.np))';
+            Pid = zeros(nwk.np, 1);
         end
         G.Nodes{(np+1) : (np + nwk.np), {'X', 'Y', 'Z', 'PtIdx'}} = [nwk.ptCoordMx, Pid];
 
@@ -878,7 +899,7 @@ function drawingTool()
             if exist(origFIdFilename, 'file') == 2
                 Fid = load(origFIdFilename);
             else
-                Fid = (1:nwk.nf)';
+                Fid = zeros(nwk.nf, 1);
             end
 
             GFaceIdx = findedge(G, nwk.faceMx(:,2), nwk.faceMx(:,3));
