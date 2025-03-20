@@ -859,31 +859,41 @@ function drawingTool()
             nwk.faceMx(:,3) = nwk.faceMx(:,3) + np;
         end
 
-        fsize = size(G.Edges, 1); 
-
-        G = addnode(G, nwk.np);
-
         origPIdFilename = [fullfile(path,name), '.originalPIdx'];
         if exist(origPIdFilename, 'file') == 2
             Pid = load(origPIdFilename);
         else
             Pid = ((np+1) : (np + nwk.np))';
         end
-        G.Nodes{(np+1) : (np + nwk.np), {'X', 'Y', 'Z', 'PtIdx'}} = [nwk.ptCoordMx, Pid];
 
-        if nwk.nf
-            G = addedge(G, nwk.faceMx(:,2), nwk.faceMx(:,3), nwk.dia); % use that table to graph logic? to create FaceIdx (?)
-            
-            origFIdFilename = [fullfile(path,name), '.originalFIdx'];
-            if exist(origFIdFilename, 'file') == 2
-                Fid = load(origFIdFilename);
-            else
-                Fid = (1:nwk.nf)';
-            end
-
-            GFaceIdx = findedge(G, nwk.faceMx(:,2), nwk.faceMx(:,3));
-            G.Edges.FaceIdx(GFaceIdx) = Fid;
+        origFIdFilename = [fullfile(path,name), '.originalFIdx'];
+        if exist(origFIdFilename, 'file') == 2
+            Fid = load(origFIdFilename);
+        else
+            Fid = (1:nwk.nf)';
         end
+
+        % Storing table from G, appending new entries to that table,
+        % restoring that table in G
+        if np > 0
+            nodesTable = G.Nodes; edgesTable = G.Edges;
+        else
+            nodesTable = table(); edgesTable = table();
+        end
+
+        newNodesTable = table(nwk.ptCoordMx(:,1), nwk.ptCoordMx(:,2), nwk.ptCoordMx(:,3), Pid, 'VariableNames', {'X', 'Y', 'Z', 'PtIdx'});
+        newEdgesTable = table(nwk.faceMx(:, 2:3), nwk.dia, Fid, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'});
+
+        nodesTable = [nodesTable ; newNodesTable];
+        edgesTable = [edgesTable ; newEdgesTable];
+
+        prevNp = size(G.Nodes, 1);
+        G = []; G = graph(edgesTable);
+
+        if size(G.Nodes, 1) < (prevNp+nwk.np)
+            G = addnode(G, (prevNp + nwk.np - size(G.Nodes, 1)));
+        end
+        G.Nodes = nodesTable;
 
         % Replot the graph on both axes
         rePlotGraph();
