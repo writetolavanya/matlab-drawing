@@ -94,6 +94,8 @@ function drawingTool()
     clearBtn =  uicontrol(drawPanel, 'Style', 'pushbutton', 'String', 'Clear', ...
         'Position', [145, 10, 50, 20], 'FontSize', 9, 'BackgroundColor', 'white', 'Callback', @clearCb);
 
+    ptSelectBtn = uicontrol(drawPanel, 'Style', 'pushbutton', 'String', 'ptSelect', ...
+     'Position', [200, 63, 70, 15], 'FontSize', 9, 'BackgroundColor', 'white', 'Callback', @ptSelectCb);
     snapToSurfaceBtn = uicontrol(drawPanel, 'Style', 'checkbox', 'String', 'SnapToSurface', ...
      'Position', [200, 35, 100, 30], 'FontSize', 11, 'Value', 0);
     shortestPathBtn = uicontrol(drawPanel, 'Style', 'checkbox', 'String', 'ShortestPath', ...
@@ -154,7 +156,7 @@ function drawingTool()
    %     'Position', [1100, 70, 80, 20], 'FontSize', 8, 'Callback', @registrationCb);
 
     showText = annotation(fig, 'textbox', [0.02, 0.135, 0.45, 0.03], 'String', '',...
-        'HorizontalAlignment', 'left', 'EdgeColor', 'none', 'FontSize', 10);
+        'HorizontalAlignment', 'left', 'EdgeColor', 'none', 'FontSize', 9, 'FontWeight', 'bold');
 
 
 %%%%%%%%%%%%%%%%%% Global variable initialisations %%%%%%%%%%%%%%%%%%%%%%    
@@ -196,7 +198,7 @@ function drawingTool()
     axDraw.ButtonDownFcn = @addPoint;
 
     % Button handles
-    btnHandles = [connectBtn, autoConnectBtn, deletePtsBtn, editPtsBtn, movePtsBtn, disConnectBtn];
+    btnHandles = [connectBtn, autoConnectBtn, deletePtsBtn, editPtsBtn, movePtsBtn, disConnectBtn, ptSelectBtn];
     btnStates = zeros(1, numel(btnHandles)); % Initialize button states (0: inactive, 1: active)
 
     % Initial state is to show the BMP
@@ -1734,6 +1736,45 @@ function drawingTool()
         np = size(G.Nodes, 1);
     end
 
+    % Callback function for the "Pt Select" button
+    function ptSelectCb(~, ~)
+        if (btnStates(7) == 0 && np > 0)
+            showTextOnFig('PtSelect mode activated. Click on a point to display coords');
+            set(plotObjDraw, 'ButtonDownFcn', @ptSelect);
+            set(axDraw, 'ButtonDownFcn', @ptSelect);
+            updateBtnState(7);
+        elseif (btnStates(7) == 0 && np == 0)
+            updateBtnState(0);
+            showTextOnFig('PtSelect mode not activated. Add points and try again.');        
+        else
+            showTextOnFig('PtSelect mode deactivated');
+            set(plotObjDraw, 'ButtonDownFcn', '');
+            set(axDraw, 'ButtonDownFcn', @addPoint);
+            updateBtnState(0);
+            rePlotGraph(); % redo the point highlights
+        end
+    end
+
+    function ptSelect(~, event)
+
+        clickPoint = event.IntersectionPoint(1:3);
+        pointIdx = findNearestPoint(clickPoint);
+
+        if pointIdx
+            % get the point coords
+            selectNode = G.Nodes(pointIdx, :);
+           
+            lastNodeIdx = height(G.Nodes);
+            set(plotObjDraw, 'NodeColor', 'red', 'MarkerSize', 4); % reset all nodes to red
+            highlight(plotObjDraw, lastNodeIdx, 'NodeColor', 'blue', 'MarkerSize', 4); % highlight last node in blue
+            highlight(plotObjDraw, pointIdx, 'NodeColor', 'cyan', 'MarkerSize', 6); % highlight selected point
+
+            % display the coords, original index
+            showTextOnFig(['X: ', num2str(selectNode.X), ', Y: ', num2str(selectNode.Y), ', Z: ', num2str(selectNode.Z), ', Idx: ', num2str(selectNode.PtIdx)]);
+        end    
+
+    end    
+
 %%%%%%%%%%%%%%%%%%%%%% Utility functions %%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     function expandAxesLimits(points)
@@ -1768,13 +1809,13 @@ function drawingTool()
             hold(axDraw, 'on');
             plotObjDraw = plot(axDraw, G, 'XData', G.Nodes.X, 'YData', G.Nodes.Y,...
                 'ZData', G.Nodes.Z, 'Marker', 'o', 'NodeColor', 'red', 'EdgeColor', [0.5 0.25 0], ...
-                'MarkerSize', 4, 'LineWidth', 4); % 'ArrowSize', arrowSize);
+                'MarkerSize', 4, 'LineWidth', 4);
             hold(axDraw, 'off');
     
             hold(axView, 'on');
             plotObjView = plot(axView, G, 'XData', G.Nodes.X, 'YData', G.Nodes.Y,...
                 'ZData', G.Nodes.Z, 'Marker', 'o', 'NodeColor', 'red', 'EdgeColor', [0.5 0.25 0], ...
-                'MarkerSize', 4, 'LineWidth', 4); %'ArrowSize', arrowSize);
+                'MarkerSize', 4, 'LineWidth', 4);
             hold(axView, 'off');
     
             % Highlight the last node in blue
@@ -1807,6 +1848,8 @@ function drawingTool()
                 set(plotObjDraw, 'ButtonDownFcn', @editPoint);
             elseif btnStates(5)
                 set(plotObjDraw, 'ButtonDownFcn', @startDragging);
+            elseif btnStates(7)
+                set(plotObjDraw, 'ButtonDownFcn', @ptSelect);
             else
                 set(plotObjDraw, 'ButtonDownFcn', @addPoint);
             end
