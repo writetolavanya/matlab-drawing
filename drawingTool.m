@@ -134,13 +134,18 @@ function drawingTool()
         'FontSize', 9, 'Position', [85, 10, 80, 20], 'BackgroundColor', 'white', 'Callback', @toggleAxesCb);
 
     uicontrol(modifyViewPanel, 'Style', 'text', 'String', 'faceEdit', ...
-        'FontSize', 10, 'Position', [175, 68, 70, 15], 'HorizontalAlignment', 'left');
+        'FontSize', 8, 'Position', [175, 72, 70, 15], 'HorizontalAlignment', 'left');
     faceEditBox = uicontrol(modifyViewPanel, 'Style', 'edit', 'String', '', ...
-        'FontSize', 10, 'Position', [175, 48, 150, 20], 'Callback', @faceEditCb);
+        'FontSize', 10, 'Position', [175, 56, 150, 18]);
     uicontrol(modifyViewPanel, 'Style', 'text', 'String', 'ptEdit', ...
-        'FontSize', 10, 'Position', [175, 32, 70, 15], 'HorizontalAlignment', 'left');
+        'FontSize', 8, 'Position', [175, 41, 70, 16], 'HorizontalAlignment', 'left');
     ptEditBox = uicontrol(modifyViewPanel, 'Style', 'edit', 'String', '', ...
-        'FontSize', 10, 'Position', [175, 12, 150, 20], 'Callback', @ptEditCb);
+        'FontSize', 10, 'Position', [175, 27, 150, 18]);
+
+    displayBtn = uicontrol(modifyViewPanel, 'Style', 'pushbutton', 'String', 'Display', ...
+        'Position', [175, 5, 60, 20], 'FontSize', 9, 'BackgroundColor', 'white', 'Callback', @displaySelectionsCb);    
+    andOrBtn = uicontrol(modifyViewPanel, 'Style', 'pushbutton', 'String', 'AND', ...
+        'Position', [240, 5, 60, 20], 'FontSize', 9, 'BackgroundColor', 'white', 'Callback', @andOrCb);
 
     expandDropdown = uicontrol(modifyViewPanel, 'Style', 'popupmenu', 'String', {'Expand Path', 'Expand Children'}, ...
         'FontSize', 10, 'Position', [330, 50, 130, 20], 'Value', 1);
@@ -949,15 +954,20 @@ function drawingTool()
         end
         objNwk = nwkHelp.load(filename);
 
-        % filter nwk based on diameter, create nwk.ptIdx, nwk.faceIdx
         if (isempty(faceEditBox.String))
-            faceSelection = (1:objNwk.nf)'; % show back the whole graph
+            faceSelection = (1:objNwk.nf)'; % the whole graph
         else
             faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
         end
-            
-        updateRefMesh(objNwk, faceSelection); % creates ObjSubNetwork and ObjGraph
 
+        if (isempty(ptEditBox.String))
+            ptSelection = (1:objNwk.np)'; % the whole graph
+        else
+            ptSelection = toolHelper.ptEditCb(ptEditBox.String, objNwk);
+        end
+
+        updateRefMesh(objNwk, faceSelection, ptSelection);
+     
         hold(axDraw, 'on');
         drawHandle = plot(axDraw, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
             'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
@@ -1607,47 +1617,11 @@ function drawingTool()
      
     function shortestPathCb(~, ~)
 
-          if (isempty(objSubNwk))
-
-            if (isempty(faceEditBox.String))
-                faceSelection = (1:objNwk.nf)'; % show back the whole graph
-            else
-                faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
-            end
-            updateRefMesh(objNwk, faceSelection);
-          end
-
-              % stlRows = find(strcmp(rendererTable.type, '.stl'));
-              % if isempty(stlRows)
-              %       % If no stl file, read from fMx  
-              %       fMxRows = find(strcmp(rendererTable.type, '.fMx'));
-              %       if isempty(fMxRows)
-              %           showTextOnFig('Please add an stl or fMx file to use as surface backdrop and try again...');
-              %           shortestPathBtn.Value = 0;
-              %           return;
-              %       else
-              %           % Use the first available .fMx file
-              %           filename = char(rendererTable.fileName(fMxRows(1)));
-              %           [path, name, ~] = fileparts(filename);
-              %           objSubNwk = nwkHelp.load(fullfile(path, name));
-              %       end
-              % else
-              %       filename = char(rendererTable.fileName(stlRows(1)));
-              %       objSubNwk = nwkConverter.stl2faceMx2(filename); % change this is use condition output (?)
-              % end
-
-          % add a check to be only in autoconnect and connect modes?
           if shortestPathBtn.Value    
      
-             if isempty(objGraph)
-
-                if (isempty(faceEditBox.String))
-                    faceSelection = (1:objNwk.nf)'; % show back the whole graph
-                else
-                    faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
-                end
-           
-                updateRefMesh(objNwk, faceSelection) % creates ObjSubNetwork and ObjGraph
+             if (isempty(objGraph) || isempty(objSubNwk))
+                % creates ObjSubNetwork and ObjGraph based on conditions 
+                displaySelectionsCb();
              end
 
              snapToSurfaceBtn.Value = 1;
@@ -1958,17 +1932,8 @@ function drawingTool()
     end
 
     function [newCoords, originalIdx] = getNearestPtOnSurface(oldCoords)
-           if isempty(objSubNwk)
-
-                if (isempty(faceEditBox.String))
-                    faceSelection = (1:objNwk.nf)'; % show back the whole graph
-                else
-                    faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
-                end
-                updateRefMesh(objNwk, faceSelection);
-
+  
                % In the viewToload objects take the latest for now?
-
                % % NOTE: We check if there is a stl, and then check if there is a nwk file.
                % objRows = find(strcmp(rendererTable.type, '.stl'));
                % if (isempty(objRows))
@@ -1981,6 +1946,9 @@ function drawingTool()
                %     disp(filename);
                %     objSubNwk = nwkConverter.stl2faceMx2(filename);
                % end
+
+           if (isempty(objSubNwk) || isempty(objGraph))
+               displaySelectionsCb();
            end
 
            xRange = xlim(axDraw); yRange = ylim(axDraw); zRange = zlim(axDraw);
@@ -2113,59 +2081,50 @@ function drawingTool()
         end
     end
 
-    function displayCb(~, ~)
+    function andOrCb(~, ~)
+      if strcmp(andOrBtn.String, 'AND')
+        andOrBtn.String = 'OR';
+        andOrBtn.Tooltip = sprintf('Gives faces, points that are a Intersection\nof faceEdit and ptEdit conditions');
+      else
+        andOrBtn.String = 'AND';
+        andOrBtn.Tooltip = sprintf('Gives faces, points that are a Union\nof faceEdit and ptEdit conditions');
+      end
+    end
+
+
+    function displaySelectionsCb(~, ~)
 
         if (isempty(objNwk)) % if there is no reference mesh
+            showTextOnFig("No reference mesh to apply filter conditions");
             return;
         end
 
         if (isempty(faceEditBox.String))
-            faceSelection = (1:objNwk.nf)'; % show back the whole graph
+            faceSelection = (1:objNwk.nf)'; % the whole graph
         else
             faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
         end
 
         if (isempty(ptEditBox.String))
-            ptSelection = (1:objNwk.np)';
+            ptSelection = (1:objNwk.np)'; % the whole graph
         else
-            ptSelection = toolHelper.faceEditCb(ptEditBox.String, objNwk);
+            ptSelection = toolHelper.ptEditCb(ptEditBox.String, objNwk);
         end
 
+        updateRefMesh(objNwk, faceSelection, ptSelection);
         
-
-
-
-
-    end    
-
-    function faceEditCb(~, ~)
-
-        % Get the face selections, make sub network, a graph
-        % delete existing plots of reference and re-plot on both axes
-
-        if (isempty(objNwk))
-            return; % a reference mesh should be loaded first
-        end
-
-        if (isempty(faceEditBox.String))
-            faceSelection = (1:objNwk.nf)'; % show back the whole graph
-        else
-            faceSelection = toolHelper.faceEditCb(faceEditBox.String, objNwk);
-        end
-
-        objRows = find(strcmp(rendererTable.type, '.fMx')); objRow = objRows(1);
-        if (~isempty(rendererTable.drawHandle{objRow}))
-            delete(rendererTable.drawHandle{objRow});
-        end
-
-        if (~isempty(rendererTable.viewHandle{objRow}))
-            delete(rendererTable.viewHandle{objRow});
-        end
-
-        if (~isempty(faceSelection)) % no need to make subnwk,graph,plot if selection is empty
-
-            updateRefMesh(objNwk, faceSelection); 
-
+        if (~isempty(objSubNwk))
+            objRows = find(strcmp(rendererTable.type, '.fMx'));
+            if (~isempty(objRows)); objRow = objRows(1); end
+    
+            if (~isempty(rendererTable.drawHandle{objRow}))
+                delete(rendererTable.drawHandle{objRow});
+            end
+    
+            if (~isempty(rendererTable.viewHandle{objRow}))
+                delete(rendererTable.viewHandle{objRow});
+            end
+    
             hold(axDraw, 'on');
             drawHandle = plot(axDraw, objGraph, 'XData', objGraph.Nodes.X, 'YData', objGraph.Nodes.Y,...
                 'ZData', objGraph.Nodes.Z, 'Marker', 'o', 'NodeColor', [0.4 0.4 0.4], 'EdgeColor', [0.4 0.4 0.4], ...
@@ -2183,9 +2142,11 @@ function drawingTool()
             rendererTable.viewHandle{objRow} = viewHandle;
     
             expandAxesLimits(objSubNwk.ptCoordMx);
+
+            showTextOnFig('Selection applied on Reference Mesh');
         end
 
-    end
+    end    
 
     function goBtnCb(~, ~)
 
@@ -2381,21 +2342,35 @@ function drawingTool()
         end
     end
 
-    function updateRefMesh(objNwk, faceSelection)
-        objSubNwk = toolHelper.makeSubNwkInd(objNwk, faceSelection);
+    function updateRefMesh(objNwk, faceSelection, ptSelection)
 
-        % Compute the resistance as edge weights in graph
-        alpha = nwkSim.ResistanceVector(objSubNwk.ptCoordMx, objSubNwk.faceMx, objSubNwk.dia, objSubNwk.nf);
-        objGraph = graph(table([objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3)], alpha, objSubNwk.fIdx, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'}));
-
-        % add isolated nodes count
-        if objSubNwk.np > size(objGraph.Nodes, 1)
-            diff = (objSubNwk.np - size(objGraph.Nodes, 1));
-            objGraph = addnode(objGraph, diff);
+        % Get the subnetwork 
+        if (strcmp(andOrBtn.String, 'AND'))
+            objSubNwk = toolHelper.faceAndPtSelections(faceSelection, ptSelection, objNwk);
+        else
+            objSubNwk = toolHelper.faceOrPtSelections(faceSelection, ptSelection, objNwk);
         end
 
-        objGraph.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
-        % Points are not scrambled
-        objGraph.Nodes.PtIdx = objSubNwk.pIdx;
+        if (~isempty(objSubNwk))
+            % Compute the resistance as edge weights in graph
+            if (objSubNwk.nf > 0)
+                alpha = nwkSim.ResistanceVector(objSubNwk.ptCoordMx, objSubNwk.faceMx, objSubNwk.dia, objSubNwk.nf);
+                objGraph = graph(table([objSubNwk.faceMx(:,2), objSubNwk.faceMx(:,3)], alpha, objSubNwk.fIdx, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'}));
+            else
+                objGraph = graph();
+            end
+    
+            % add isolated nodes count
+            if objSubNwk.np > size(objGraph.Nodes, 1)
+                diff = (objSubNwk.np - size(objGraph.Nodes, 1));
+                objGraph = addnode(objGraph, diff);
+            end
+    
+            objGraph.Nodes{1:objSubNwk.np, {'X', 'Y', 'Z'}} = objSubNwk.ptCoordMx;
+            objGraph.Nodes.PtIdx = objSubNwk.pIdx; % Points are not scrambled
+        else
+            showTextOnFig('Empty selection. Reference Mesh not updated');
+        end
     end
+
 end

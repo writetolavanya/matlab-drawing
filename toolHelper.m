@@ -63,8 +63,6 @@ function [subnwk] = faceAndPtSelections(faceSelection, ptSelection, nwk)
     end
 
     subnwk = [];
-    if (isempty(ptSelection)); ptSelection = (1:nwk.np)'; end
-    if (isempty(faceSelection)); faceSelection = (1:nwk.nf)'; end
 
     % Faces that have atleast one endpoint in selected points - use all or any function
     endpoints = nwk.faceMx(faceSelection, 2:3);
@@ -92,7 +90,7 @@ function [subnwk] = faceOrPtSelections(faceSelection, ptSelection, nwk)
         subnwk = nwk; return;
     end
 
-    subnwk = [];
+    subnwk = []; uniquePts = [];
     if ~isempty(faceSelection)
         uniquePts = unique(nwk.faceMx(faceSelection, 2:3));
 
@@ -109,12 +107,17 @@ function [subnwk] = faceOrPtSelections(faceSelection, ptSelection, nwk)
     if ~isempty(ptSelection)
         diffPtsList = setdiff(ptSelection, uniquePts);
         
-        if (~isfield(subnwk, ptCoordMx)); subnwk.ptCoordMx = []; end
-        if (~isfield(subnwk, pIdx)); subnwk.pIdx = []; end
+        if (~isfield(subnwk, 'ptCoordMx')); subnwk.ptCoordMx = []; end
+        if (~isfield(subnwk, 'pIdx')); subnwk.pIdx = []; end
 
         subnwk.ptCoordMx = [subnwk.ptCoordMx ; nwk.ptCoordMx(diffPtsList, :)];
         subnwk.np = size(subnwk.ptCoordMx, 1);
         subnwk.pIdx = [subnwk.pIdx; diffPtsList];
+
+        if (~isfield(subnwk, 'faceMx'))
+            subnwk.faceMx = []; subnwk.nf = 0;
+            subnwk.dia = []; subnwk.fIdx = [];
+        end
     end
 
 end
