@@ -1,4 +1,4 @@
-function drawingTool()
+function handles = drawingTool()
     
    clc ; clear all;
 
@@ -870,14 +870,14 @@ function drawingTool()
         if exist(origPIdFilename, 'file') == 2
             Pid = load(origPIdFilename);
         else
-            Pid = ((np+1) : (np + nwk.np))';
+            Pid = zeros(nwk.np, 1); 
         end
 
         origFIdFilename = [fullfile(path,name), '.originalFIdx'];
         if exist(origFIdFilename, 'file') == 2
             Fid = load(origFIdFilename);
         else
-            Fid = (1:nwk.nf)';
+            Fid = zeros(nwk.nf, 1); 
         end
 
         % Storing table from G, appending new entries to that table,
@@ -2372,5 +2372,4 @@ function drawingTool()
             showTextOnFig('Empty selection. Reference Mesh not updated');
         end
     end
-
 end
