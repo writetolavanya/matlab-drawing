@@ -2239,12 +2239,10 @@ function handles = drawingTool()
         % cases where origP1, origP2 are 0, then one of the pts is not on mesh, exit
         if (origP1 == 0 || origP2 == 0); return; end
 
-        subnwkP1 = find(objSubNwk.pIdx == origP1); subnwkP2 = find(objSubNwk.pIdx == origP2);
+        faceIdx1 = find(objNwk.faceMx(:,2) == origP1 | objNwk.faceMx(:,3) == origP1);
+        faceIdx2 = find(objNwk.faceMx(:,2) == origP2 | objNwk.faceMx(:,3) == origP2);
 
-        faceIdx1 = find(objSubNwk.faceMx(:,2) == subnwkP1 | objSubNwk.faceMx(:,3) == subnwkP1);
-        faceIdx2 = find(objSubNwk.faceMx(:,2) == subnwkP2 | objSubNwk.faceMx(:,3) == subnwkP2);
-
-        leftMaxDia = max(objSubNwk.dia(faceIdx1)); rightMaxDia = max(objSubNwk.dia(faceIdx2));
+        leftMaxDia = max(objNwk.dia(faceIdx1)); rightMaxDia = max(objNwk.dia(faceIdx2));
         meanDia = mean([leftMaxDia, rightMaxDia]);
     end    
 
