@@ -2177,7 +2177,7 @@ function handles = drawingTool()
             currState.C2 = currState.C1';
 
             currState.visitedPts = false(1, objSubNwk.np);
-            currState.visitedFaces = false(1, objSubNwk.np);
+            currState.visitedFaces = false(1, objSubNwk.nf);
 
             if (~isempty(firstPtIdx))
                 currState.visitedPts(firstPtIdx) = true;
@@ -2212,9 +2212,9 @@ function handles = drawingTool()
         viewHandle = rendererTable.viewHandle{refRow};
         drawHandle = rendererTable.drawHandle{refRow};
         highlight(viewHandle, objSubNwk.faceMx(newFaces, 2), ...
-            objSubNwk.faceMx(newFaces, 3), 'EdgeColor', 'green'); %, 'LineWidth', 4);
+            objSubNwk.faceMx(newFaces, 3), 'EdgeColor', 'green', 'LineWidth', 6);
         highlight(drawHandle, objSubNwk.faceMx(newFaces, 2), ...
-            objSubNwk.faceMx(newFaces, 3), 'EdgeColor', 'green'); %, 'LineWidth', 4);
+            objSubNwk.faceMx(newFaces, 3), 'EdgeColor', 'green', 'LineWidth', 6);
 
         % Safe keep the current structure in viewHandle 
         rendererTable.viewHandle{refRow}.UserData = currState;
@@ -2226,7 +2226,7 @@ function handles = drawingTool()
         end
         rendererTable.viewHandle{refRow}.UserData = []; % empty current state
         set([rendererTable.viewHandle{refRow}, rendererTable.drawHandle{refRow}], ...
-            'EdgeColor', [0.4 0.4 0.4]);  % Remove highlights
+            'EdgeColor', [0.4 0.4 0.4], 'LineWidth', 0.5);  % Remove highlights
     end
 
     function [meanDia] = avgDia(p1, p2)
