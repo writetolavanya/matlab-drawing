@@ -954,6 +954,11 @@ function handles = drawingTool()
         end
         objNwk = nwkHelp.load(filename);
 
+        lsFile = [fullfile(path, name), '.ls'];
+        if exist(lsFile, 'file') == 2
+            objNwk.ls = load(lsFile);
+        end
+
         if (isempty(faceEditBox.String))
             faceSelection = (1:objNwk.nf)'; % the whole graph
         else

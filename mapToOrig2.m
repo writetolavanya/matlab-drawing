@@ -1,8 +1,8 @@
 
-function mapToOrig(filename1, filename2)
+function mapToOrig2()
 
-    %filename1 = '/Users/lavanyavaddavalli/Desktop/lppd/tools_latest/data/KF_WM_TV_straight_LCC';
-    %filename2 = '/Users/lavanyavaddavalli/Desktop/lppd/tools_latest/data/KF_WM_TV_rVA';
+    filename1 = '/Users/lavanyavaddavalli/Desktop/lppd/tools_latest/matlab_drawing/KF_WM_TV_straight_LCC';
+    filename2 = '/Users/lavanyavaddavalli/Desktop/lppd/tools_latest/data/NWK_debug/KF_WM_TV_lICA_newGen';
     
     nwk = nwkHelp.load(filename1);
     subnwk = nwkHelp.load(filename2);
