@@ -238,6 +238,9 @@ function handles = drawingTool()
         'FontSize', 8, 'FontAngle', 'italic', 'Color', [0.3 0.3 0.3], ...
         'EdgeColor', 'none', 'HorizontalAlignment', 'right');
 
+    fidReport = fopen('drawReport.txt', 'w');  % write mode (overwrite or create)
+    fclose(fidReport);
+
 %%%%%%%%%%%%%%%%%%%%%%%% UI Callback functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % Callback function to display the help text for ? buttons
@@ -1747,8 +1750,10 @@ function handles = drawingTool()
             highlight(plotObjDraw, pointIdx, 'NodeColor', 'cyan', 'MarkerSize', 6); % highlight selected point
 
             % display the coords, original index
-            showTextOnFig(['X: ', num2str(selectNode.X), ', Y: ', num2str(selectNode.Y), ', Z: ', num2str(selectNode.Z), ', Idx: ', num2str(selectNode.PtIdx)]);
-        end    
+            ptInfo = sprintf('X: %.3f, Y: %.3f, Z: %.3f, Idx: %d', selectNode.X, selectNode.Y, selectNode.Z, selectNode.PtIdx);
+            showTextOnFig(ptInfo);
+            writeToReport('Selected point', ptInfo);
+        end
 
     end    
 
@@ -2373,4 +2378,16 @@ function handles = drawingTool()
             showTextOnFig('Empty selection. Reference Mesh not updated');
         end
     end
+
+   function writeToReport(context, text)
+        fid = fopen('drawReport.txt', 'a');        
+        if fid == -1
+            error('Unable to open or create drawReport.txt');
+        end
+
+        currentTime = datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss');
+        fprintf(fid, '\n%s: %s: %s\n', char(currentTime), context, text);
+        fclose(fid);
+   end
+
 end
