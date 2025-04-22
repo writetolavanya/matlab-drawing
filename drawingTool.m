@@ -957,6 +957,11 @@ function handles = drawingTool()
         end
         objNwk = nwkHelp.load(filename);
 
+        lsFile = [fullfile(path, name), '.ls'];
+        if exist(lsFile, 'file') == 2
+            objNwk.ls = load(lsFile);
+        end
+
         if (isempty(faceEditBox.String))
             faceSelection = (1:objNwk.nf)'; % the whole graph
         else
@@ -1228,43 +1233,41 @@ function handles = drawingTool()
             return;
         end
 
-        [~, baseName, ~] = fileparts(file);
-        pFileName = [baseName, '.pMx'];
-        dFileName = [baseName, '.dia'];
+        [~, baseName, ~] = fileparts(file); pFileName = [baseName, '.pMx']; dFileName = [baseName, '.dia'];
   
-        ptCoords = table(G.Nodes.X, G.Nodes.Y, G.Nodes.Z, 'VariableNames', {'X', 'Y', 'Z'});
-        writetable(ptCoords, fullfile(path, pFileName),...
-            'FileType','text', 'Delimiter', ' ', 'WriteVariableNames', false);
-
-        faceTable = table(ones(height(G.Edges), 1), G.Edges.EndNodes(:, 1), G.Edges.EndNodes(:, 2), ...
-            'VariableNames', {'GroupID', 'Source', 'Target'});
-        writetable(faceTable, fullfile(path, file),...
-            'FileType', 'text', 'Delimiter', ' ', 'WriteVariableNames', false);
-
-        saveDia = G.Edges.Weight;
-        fileID = fopen(fullfile(path, dFileName), 'w');
-        fprintf(fileID, '%f\n', saveDia);
+        fileID = fopen(fullfile(path, pFileName), 'w');
+        fprintf(fileID, '%.15f %.15f %.15f\n', [G.Nodes.X, G.Nodes.Y, G.Nodes.Z]');
         fclose(fileID);
 
-        if (size(find(G.Nodes.PtIdx > 0), 1))
-            savePtIdx = G.Nodes.PtIdx;
-            ptFile = [baseName, '.originalPIdx'];
-            fileID = fopen(fullfile(path, ptFile), 'w');
-            fprintf(fileID, '%d\n', savePtIdx);
-            fclose(fileID);
-        end
+        fileID = fopen(fullfile(path, file), 'w');
+        fprintf(fileID, '%d %d %d %d %d\n', [ones(height(G.Edges), 1), G.Edges.EndNodes(:, 1), G.Edges.EndNodes(:, 2), ...
+            zeros(height(G.Edges), 1), zeros(height(G.Edges), 1)]');
+        fclose(fileID);
 
-        if (size(find(G.Edges.FaceIdx > 0), 1))
-            saveFaceIdx = G.Edges.FaceIdx;
-            faceFile = [baseName, '.originalFIdx'];
-            fileID = fopen(fullfile(path, faceFile), 'w');
-            fprintf(fileID, '%d\n', saveFaceIdx);
-            fclose(fileID);
-        end
-        
+        fileID = fopen(fullfile(path, dFileName), 'w');
+        fprintf(fileID, '%.15f\n', G.Edges.Weight);
+        fclose(fileID);
+
         showTextOnFig(['Point coordinate matrix saved as: ', fullfile(path, pFileName)]);
         showTextOnFig(['Face matrix saved as: ', fullfile(path, file)]);
         showTextOnFig(['Diameter matrix saved as: ', fullfile(path, dFileName)]);
+
+        if (size(find(G.Nodes.PtIdx > 0), 1))
+            ptFile = [baseName, '.originalPIdx'];
+            fileID = fopen(fullfile(path, ptFile), 'w');
+            fprintf(fileID, '%d\n', G.Nodes.PtIdx);
+            fclose(fileID);
+            showTextOnFig(['Original Point Index vector saved as: ', fullfile(path, ptFile)]);
+        end
+
+        if (size(find(G.Edges.FaceIdx > 0), 1))
+            faceFile = [baseName, '.originalFIdx'];
+            fileID = fopen(fullfile(path, faceFile), 'w');
+            fprintf(fileID, '%d\n', G.Edges.FaceIdx);
+            fclose(fileID);
+            showTextOnFig(['Original Face Index vector saved as: ', fullfile(path, faceFile)]);
+        end
+
     end
 
     % Update button state

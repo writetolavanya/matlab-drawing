@@ -176,24 +176,11 @@ function indices = parseFaceCondition(nwk, condition)
                 indices = 1:(value-1);
             end
 
-        elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2', 'ls'}))
+        elseif any(startsWith(condition, {'d', 'l', 'g', 'p1', 'p2'}))
 
              if strcmp(condition(1), 'd')
                 searchCol = nwk.dia;
              
-             elseif strcmp(condition(1:2), 'ls')
-                 KFfile = 'KF_WM_TV_straight_LCC.faceDistance';
-
-                 if isfield(nwk, 'faceDistance')
-                     searchCol = nwk.faceDistance;
-                 elseif ~isfield(nwk, 'faceDistance') && exist(KFfile, 'file') == 2
-                     nwk.faceDistance = load(KFfile);
-                     searchCol = nwk.faceDistance;
-                 else
-                     disp('KF_WM_TV_straight_LCC.faceDistance file not found');
-                     return;
-                 end
-
              elseif strcmp(condition(1), 'l')
                 if ~isfield(nwk, 'faceLen')
                     nwk.faceLen = calculateLengths(nwk);
@@ -282,7 +269,7 @@ function indices = parsePtCondition(nwk, condition)
                 indices = value:value:nwk.np;
             end
 
-        elseif any(startsWith(condition, {'X', 'Y', 'Z', 'DGi', 'DGo'}))
+        elseif any(startsWith(condition, {'X', 'Y', 'Z', 'DGi', 'DGo', 'ls'}))
 
             if strcmp(condition(1), 'X')              
                 searchCol = nwk.ptCoordMx(:, 1);                
@@ -290,6 +277,16 @@ function indices = parsePtCondition(nwk, condition)
                 searchCol = nwk.ptCoordMx(:, 2);
             elseif strcmp(condition(1), 'Z')
                 searchCol = nwk.ptCoordMx(:, 3);
+
+            elseif strcmp(condition(1:2), 'ls')
+
+                 if isfield(nwk, 'ls')
+                     searchCol = nwk.ls;
+                 else
+                     disp('.ls file not found');
+                     return;
+                 end
+
             elseif strcmp(condition(1:3), 'DGi')
                 if ~isfield(nwk, 'inDeg')
                     [nwk.inDeg, nwk.outDeg] = calculateInOutDegree(nwk);
