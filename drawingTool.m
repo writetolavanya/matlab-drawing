@@ -823,7 +823,7 @@ function handles = drawingTool()
 
     function loadNwkFileCb(~, ~)
 
-        [fileName, filePath] = uigetfile('*.fMx', 'Select a face matrix file');
+        [fileName, filePath] = uigetfile('*.fMx;*.pMx', 'Select a face matrix file');
         
         if fileName == 0
             disp('File selection canceled');
@@ -838,8 +838,15 @@ function handles = drawingTool()
  
         showTextOnFig("Loading nwk in process...");
 
-        [path, name, ~] = fileparts(fullfile(filePath, fileName));
-        nwk = nwkHelp.load(fullfile(path, name));
+        [path, name, ext] = fileparts(fullfile(filePath, fileName));
+        if strcmp(ext, '.pMx')
+            nwk = [];
+            nwk.ptCoordMx = load(fullfile(filePath, fileName));
+            nwk.np = size(nwk.ptCoordMx, 1);
+            nwk.nf = 0; nwk.nt = nwk.np;
+        else 
+            nwk = nwkHelp.load(fullfile(path, name));
+        end
 
         if np > 0 
             oldPts = [G.Nodes.X, G.Nodes.Y, G.Nodes.Z];
@@ -891,16 +898,18 @@ function handles = drawingTool()
             nodesTable = table(); edgesTable = table();
         end
 
+        prevNp = size(G.Nodes, 1);    
+        G = graph([], []);
         newNodesTable = table(nwk.ptCoordMx(:,1), nwk.ptCoordMx(:,2), nwk.ptCoordMx(:,3), Pid, 'VariableNames', {'X', 'Y', 'Z', 'PtIdx'});
-        newEdgesTable = table(nwk.faceMx(:, 2:3), nwk.dia, Fid, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'});
-
         nodesTable = [nodesTable ; newNodesTable];
-        edgesTable = [edgesTable ; newEdgesTable];
 
-        prevNp = size(G.Nodes, 1);
-        G = []; G = graph(edgesTable);
+        if nwk.nf
+            newEdgesTable = table(nwk.faceMx(:, 2:3), nwk.dia, Fid, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'});
+            edgesTable = [edgesTable ; newEdgesTable];
+            G = graph(edgesTable);
+        end
 
-        if size(G.Nodes, 1) < (prevNp+nwk.np)
+        if size(G.Nodes, 1) < (prevNp + nwk.np)
             G = addnode(G, (prevNp + nwk.np - size(G.Nodes, 1)));
         end
         G.Nodes = nodesTable;
