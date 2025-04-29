@@ -839,6 +839,14 @@ function handles = drawingTool()
         showTextOnFig("Loading nwk in process...");
 
         [path, name, ext] = fileparts(fullfile(filePath, fileName));
+
+        if strcmp(ext, '.pMx')
+            fMxFile = fullfile(path, [name, '.fMx']);
+            if exist(fMxFile, 'file') == 2
+                ext = '.fMx';
+            end
+        end
+
         if strcmp(ext, '.pMx')
             nwk = [];
             nwk.ptCoordMx = load(fullfile(filePath, fileName));
@@ -892,20 +900,29 @@ function handles = drawingTool()
 
         % Storing table from G, appending new entries to that table,
         % restoring that table in G
-        if np > 0
-            nodesTable = G.Nodes; edgesTable = G.Edges;
+        if size(G.Nodes, 1) > 0
+            nodesTable = G.Nodes;
         else
-            nodesTable = table(); edgesTable = table();
+            nodesTable = table();
+        end
+
+        if size(G.Edges, 1) > 0
+            edgesTable = G.Edges;
+        else
+            edgesTable = table();
         end
 
         prevNp = size(G.Nodes, 1);    
-        G = graph([], []);
+        G = graph([], []); newEdgesTable = table();
+
         newNodesTable = table(nwk.ptCoordMx(:,1), nwk.ptCoordMx(:,2), nwk.ptCoordMx(:,3), Pid, 'VariableNames', {'X', 'Y', 'Z', 'PtIdx'});
         nodesTable = [nodesTable ; newNodesTable];
-
         if nwk.nf
             newEdgesTable = table(nwk.faceMx(:, 2:3), nwk.dia, Fid, 'VariableNames', {'EndNodes', 'Weight', 'FaceIdx'});
-            edgesTable = [edgesTable ; newEdgesTable];
+        end
+        edgesTable = [edgesTable ; newEdgesTable];
+        
+        if size(edgesTable, 1) > 0
             G = graph(edgesTable);
         end
 
