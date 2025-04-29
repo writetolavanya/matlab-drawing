@@ -39,11 +39,11 @@ function handles = drawingTool()
 
     % Syncrhonise zoom
     zoomObj = zoom(axView);
-    set(zoomObj, 'ActionPostCallback', @updateAxes);
+    set(zoomObj, 'ActionPostCallback', @updateZoomAxes);
 
     % Synchronize pan
     panObj = pan(fig);
-    set(panObj, 'ActionPostCallback', @updateAxes);
+    set(panObj, 'ActionPostCallback', @updatePanAxes);
 
     % Set the keyboard shortcuts
     set(fig, 'WindowKeyPressFcn', @keyPressCb);
@@ -2045,7 +2045,7 @@ function handles = drawingTool()
         end
     end
 
-    function updateAxes(~, ~)
+    function updateZoomAxes(~, ~)
     
         newXLim = get(axView, 'XLim');
         newYLim = get(axView, 'YLim');
@@ -2062,6 +2062,46 @@ function handles = drawingTool()
                 zlim(axDraw, newZLim);
                 xlim(axDraw, newXLim);
         end
+        updateDrawBox(axView, [currentThirdCoord - thickness, currentThirdCoord]);
+
+    end
+
+    function updatePanAxes(src, ~)
+
+        if isequal(src.CurrentObject, axView) % if pan is done on 3D view
+    
+            newXLim = get(axView, 'XLim');
+            newYLim = get(axView, 'YLim');
+            newZLim = get(axView, 'ZLim');
+            
+            switch toggleStates{currentState}
+                case 'XY'
+                    xlim(axDraw, newXLim);
+                    ylim(axDraw, newYLim);
+                case 'YZ'
+                    zlim(axDraw, newZLim);
+                    ylim(axDraw, newYLim);
+                case 'XZ'
+                    zlim(axDraw, newZLim);
+                    xlim(axDraw, newXLim);
+            end
+
+        else  % if pan is done on 2D view
+
+            switch toggleStates{currentState}
+                case 'XY'
+                    newXLim = get(axDraw, 'XLim');  xlim(axView, newXLim);
+                    newYLim = get(axDraw, 'YLim');  ylim(axView, newYLim);
+                case 'YZ'
+                    newYLim = get(axDraw, 'YLim');  ylim(axView, newYLim);
+                    newZLim = get(axDraw, 'ZLim');  zlim(axView, newZLim);
+                case 'XZ'
+                    newXLim = get(axDraw, 'XLim');  xlim(axView, newXLim);
+                    newZLim = get(axDraw, 'ZLim');  zlim(axView, newZLim);
+            end
+
+        end
+
         updateDrawBox(axView, [currentThirdCoord - thickness, currentThirdCoord]);
 
     end
